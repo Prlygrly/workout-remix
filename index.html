@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workout Remix</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1e2128;
+    --panel-2: #262a33;
+    --text: #eef1f5;
+    --muted: #9aa3b2;
+    --accent: #ff5a5f;
+    --accent-2: #3ddc97;
+    --border: #333846;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  button {
+    font-size: 1rem;
+    font-family: inherit;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: var(--panel-2);
+    color: var(--text);
+    transition: filter 0.12s ease;
+  }
+  button:hover { filter: brightness(1.15); }
+  button:active { filter: brightness(0.95); }
+  button:disabled { opacity: 0.5; cursor: default; filter: none; }
+  .btn-primary { background: var(--accent); color: #fff; font-weight: 700; }
+  .btn-go {
+    background: var(--accent-2);
+    color: #08160f;
+    font-weight: 800;
+    font-size: 1.3rem;
+    padding: 22px;
+    width: 100%;
+    min-height: 64px;
+  }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row-wrap { flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; min-width: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85rem; }
+  .notice {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+  }
+  .notice.err { background: #3a1e22; color: #ffb3b6; border: 1px solid #5a2a30; }
+  .notice.ok  { background: #16332a; color: #a8f0d0; border: 1px solid #245040; }
+  .notice.warn{ background: #3a341e; color: #f0e0a8; border: 1px solid #5a5024; }
+  .hidden { display: none !important; }
+
+  /* Mix list */
+  .mix-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .mix-item .idx {
+    width: 26px; height: 26px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff; border-radius: 50%;
+    font-size: 0.85rem; font-weight: 700;
+  }
+  .mix-item .meta { flex: 1 1 auto; min-width: 0; }
+  .mix-item .title {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.95rem;
+  }
+  .mix-item .dur { color: var(--muted); font-size: 0.8rem; }
+  .mix-item .ctrls { display: flex; gap: 4px; flex: 0 0 auto; }
+  .mix-item .ctrls button { padding: 8px 10px; min-width: 40px; }
+  .total-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; font-size: 1.05rem;
+  }
+  .total-bar strong { color: var(--accent-2); }
+
+  .saved-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+  }
+  .saved-item:last-child { border-bottom: none; }
+  .saved-item .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .saved-item button { padding: 8px 10px; font-size: 0.85rem; }
+
+  /* Player */
+  .video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .video-frame iframe, .video-frame > div { width: 100%; height: 100%; border: 0; }
+  .start-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; background: rgba(10,12,16,0.92); text-align: center; padding: 20px;
+  }
+  .start-overlay .big { font-size: 1.2rem; }
+  .progress-block { margin-top: 14px; }
+  .nowplaying { font-size: 1.05rem; margin-bottom: 4px; }
+  .nowplaying .n { color: var(--accent); font-weight: 700; }
+  .time-line { color: var(--muted); font-size: 0.9rem; margin-bottom: 10px; }
+  .seg-bar { display: flex; gap: 3px; width: 100%; height: 12px; }
+  .seg {
+    flex: 1 1 auto; background: var(--panel-2); border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .seg .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
+  .seg.done .fill { width: 100% !important; background: var(--accent-2); }
+  .player-controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .player-controls button { flex: 1 1 auto; }
+  a.link { color: var(--accent-2); }
+  .foot { color: var(--muted); font-size: 0.8rem; margin-top: 24px; text-align: center; }
+  .foot a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ BUILDER VIEW ============ -->
+  <div id="builder" class="hidden">
+    <h1>🏋️ Workout Remix</h1>
+    <p class="sub">Stitch several YouTube videos into one no-break, no-ad workout. Build a mix, share the link.</p>
+
+    <div class="panel">
+      <h2>Add a video</h2>
+      <div class="row row-wrap">
+        <input id="urlInput" class="grow" type="text" placeholder="Paste a YouTube link or video ID" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="addBtn" class="btn-primary">Add</button>
+      </div>
+      <div id="addNotice"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Your workout</h2>
+      <div id="mixList"></div>
+      <div id="mixEmpty" class="muted small">No videos yet. Add a couple above.</div>
+      <div class="total-bar">
+        <span class="muted">Total time</span>
+        <strong id="totalTime">0:00</strong>
+      </div>
+      <div class="row row-wrap" style="margin-top:14px;">
+        <input id="workoutName" class="grow" type="text" placeholder="Name this workout (optional)" autocomplete="off">
+      </div>
+      <div class="player-controls">
+        <button id="copyBtn" class="btn-primary">📋 Copy share link</button>
+        <button id="previewBtn">▶ Preview</button>
+        <button id="saveBtn">💾 Save</button>
+      </div>
+      <div id="shareWrap" class="hidden" style="margin-top:10px;">
+        <input id="shareUrl" type="text" readonly>
+      </div>
+      <div id="mixNotice"></div>
+    </div>
+
+    <div class="panel" id="savedPanel">
+      <h2>Saved workouts</h2>
+      <div id="savedList"></div>
+      <div id="savedEmpty" class="muted small">Nothing saved yet.</div>
+    </div>
+
+    <p class="foot">Ad-free playback relies on YouTube's embedded player behaving as it does on sites like PopSugar. It's not guaranteed by YouTube — use Preview to check a video before a workout.</p>
+  </div>
+
+  <!-- ============ PLAYER VIEW ============ -->
+  <div id="player" class="hidden">
+    <h1 id="playerTitle" style="font-size:1.25rem;">🏋️ Workout</h1>
+    <div class="video-frame">
+      <div id="ytplayer"></div>
+      <div id="startOverlay" class="start-overlay">
+        <div class="big" id="overlayText">Ready — <span id="overlayCount"></span> videos</div>
+        <button id="startBtn" class="btn-go">▶ Start Workout</button>
+        <div class="muted small">Tap to start. Sound will play.</div>
+      </div>
+    </div>
+
+    <div class="progress-block">
+      <div class="nowplaying"><span class="n" id="npIndex">–</span> <span id="npTitle" class="muted">Press Start</span></div>
+      <div class="time-line" id="timeLine"></div>
+      <div class="seg-bar" id="segBar"></div>
+    </div>
+
+    <div class="player-controls">
+      <button id="skipBtn">⏭ Skip video</button>
+      <button id="restartBtn">↺ Restart workout</button>
+    </div>
+    <div id="playerNotice"></div>
+
+    <p class="foot"><a href="#" id="editLink">Build your own workout →</a></p>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   Workout Remix — single-file app
+   - Builder view (no ?v=) lets you assemble a mix + share link
+   - Player view (?v=id:dur,id:dur,...) plays them back-to-back
+   ============================================================ */
+
+(function () {
+  "use strict";
+
+  // ---------- shared helpers ----------
+  var YT_ID_RE = /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/|live\/))([A-Za-z0-9_-]{11})|^([A-Za-z0-9_-]{11})$/;
+
+  function parseVideoId(raw) {
+    if (!raw) return null;
+    var s = raw.trim();
+    var m = s.match(YT_ID_RE);
+    if (m) return m[1] || m[2] || null;
+    return null;
+  }
+
+  function fmtTime(totalSec) {
+    totalSec = Math.max(0, Math.round(totalSec || 0));
+    var h = Math.floor(totalSec / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    if (h > 0) return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    return m + ":" + String(s).padStart(2, "0");
+  }
+
+  function el(id) { return document.getElementById(id); }
+
+  function notice(container, msg, kind) {
+    container.innerHTML = "";
+    if (!msg) return;
+    var d = document.createElement("div");
+    d.className = "notice " + (kind || "ok");
+    d.textContent = msg;
+    container.appendChild(d);
+    return d;
+  }
+
+  // Parse ?v= into [{id, dur}]
+  function parseWorkoutFromUrl() {
+    var params = new URLSearchParams(location.search);
+    var v = params.get("v");
+    if (!v) return null;
+    var items = [];
+    v.split(",").forEach(function (chunk) {
+      chunk = chunk.trim();
+      if (!chunk) return;
+      var parts = chunk.split(":");
+      var id = parts[0];
+      var dur = parts[1] ? parseInt(parts[1], 10) : 0;
+      if (id && id.length === 11) items.push({ id: id, dur: isNaN(dur) ? 0 : dur });
+    });
+    var title = params.get("t") || "";
+    return { items: items, title: title };
+  }
+
+  function buildShareUrl(items, name) {
+    var base = location.origin + location.pathname;
+    var v = items.map(function (it) { return it.id + ":" + Math.round(it.dur || 0); }).join(",");
+    var url = base + "?v=" + v;
+    if (name && name.trim()) url += "&t=" + encodeURIComponent(name.trim());
+    return url;
+  }
+
+  // ============================================================
+  // YouTube IFrame API loader (shared, single load)
+  // ============================================================
+  var ytReadyCallbacks = [];
+  var ytReady = false;
+  window.onYouTubeIframeAPIReady = function () {
+    ytReady = true;
+    ytReadyCallbacks.forEach(function (cb) { cb(); });
+    ytReadyCallbacks = [];
+  };
+  function whenYTReady(cb) {
+    if (ytReady) cb();
+    else ytReadyCallbacks.push(cb);
+  }
+  function loadYTApi() {
+    if (document.getElementById("yt-iframe-api")) return;
+    var tag = document.createElement("script");
+    tag.id = "yt-iframe-api";
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  }
+
+  // origin param only helps over http(s); omit on file://
+  function originParam() {
+    return (location.protocol === "http:" || location.protocol === "https:") ? location.origin : undefined;
+  }
+
+  // ============================================================
+  // BUILDER
+  // ============================================================
+  function initBuilder() {
+    el("builder").classList.remove("hidden");
+    document.title = "Workout Remix — Builder";
+
+    var mix = [];                 // [{id, dur, title}]
+    var metaPlayer = null;        // hidden player for cueing metadata
+    var cueQueue = [];            // ids waiting for metadata
+    var cueActive = null;         // {id, resolve, reject}
+    var cueTimer = null;
+
+    loadYTApi();
+    whenYTReady(function () {
+      var host = document.createElement("div");
+      host.style.position = "absolute";
+      host.style.width = "1px";
+      host.style.height = "1px";
+      host.style.left = "-9999px";
+      host.style.top = "-9999px";
+      document.body.appendChild(host);
+      var inner = document.createElement("div");
+      host.appendChild(inner);
+      metaPlayer = new YT.Player(inner, {
+        height: "1", width: "1",
+        playerVars: { origin: originParam() },
+        events: {
+          onStateChange: function (e) {
+            if (e.data === YT.PlayerState.CUED && cueActive) {
+              var dur = metaPlayer.getDuration();
+              var data = metaPlayer.getVideoData ? metaPlayer.getVideoData() : {};
+              finishCue(null, { dur: dur, title: (data && data.title) || "" });
+            }
+          },
+          onError: function (e) {
+            if (cueActive) finishCue(e.data || "error", null);
+          }
+        }
+      });
+    });
+
+    function cueMeta(id) {
+      return new Promise(function (resolve, reject) {
+        cueQueue.push({ id: id, resolve: resolve, reject: reject });
+        pumpCue();
+      });
+    }
+    function pumpCue() {
+      if (cueActive || !cueQueue.length || !metaPlayer || !metaPlayer.cueVideoById) {
+        if (!metaPlayer || !metaPlayer.cueVideoById) {
+          // API not ready yet; retry shortly
+          if (cueQueue.length) setTimeout(pumpCue, 300);
+        }
+        return;
+      }
+      cueActive = cueQueue.shift();
+      metaPlayer.cueVideoById(cueActive.id);
+      cueTimer = setTimeout(function () {
+        if (cueActive) finishCue("timeout", null);
+      }, 8000);
+    }
+    function finishCue(err, data) {
+      if (cueTimer) { clearTimeout(cueTimer); cueTimer = null; }
+      var active = cueActive;
+      cueActive = null;
+      if (!active) { pumpCue(); return; }
+      if (err) active.reject(err);
+      else active.resolve(data);
+      pumpCue();
+    }
+
+    // ----- add flow -----
+    function addVideo() {
+      var raw = el("urlInput").value;
+      var id = parseVideoId(raw);
+      if (!id) {
+        notice(el("addNotice"), "Couldn't find a YouTube video ID in that. Paste a full link or an 11-character ID.", "err");
+        return;
+      }
+      if (mix.some(function (m) { return m.id === id; })) {
+        notice(el("addNotice"), "That video is already in your workout.", "warn");
+        return;
+      }
+      var addBtn = el("addBtn");
+      addBtn.disabled = true;
+      addBtn.textContent = "…";
+      notice(el("addNotice"), "Looking up “" + id + "”…", "ok");
+
+      cueMeta(id).then(function (data) {
+        mix.push({ id: id, dur: data.dur || 0, title: data.title || ("Video " + id) });
+        el("urlInput").value = "";
+        notice(el("addNotice"), "", "ok");
+        renderMix();
+      }).catch(function (err) {
+        var msg = "Couldn't load that video";
+        if (err === 101 || err === 150) msg = "That video's owner has disabled embedding — it can't be used in a remix.";
+        else if (err === 100) msg = "That video is unavailable (removed or private).";
+        else if (err === "timeout") msg = "Timed out loading that video. Check the link and try again.";
+        notice(el("addNotice"), msg, "err");
+      }).then(function () {
+        addBtn.disabled = false;
+        addBtn.textContent = "Add";
+      });
+    }
+
+    function renderMix() {
+      var list = el("mixList");
+      list.innerHTML = "";
+      el("mixEmpty").classList.toggle("hidden", mix.length > 0);
+      var total = 0;
+      mix.forEach(function (item, i) {
+        total += item.dur || 0;
+        var row = document.createElement("div");
+        row.className = "mix-item";
+        var idx = document.createElement("div"); idx.className = "idx"; idx.textContent = (i + 1);
+        var meta = document.createElement("div"); meta.className = "meta";
+        var t = document.createElement("div"); t.className = "title"; t.textContent = item.title;
+        var d = document.createElement("div"); d.className = "dur"; d.textContent = item.dur ? fmtTime(item.dur) : "duration unknown";
+        meta.appendChild(t); meta.appendChild(d);
+        var ctrls = document.createElement("div"); ctrls.className = "ctrls";
+        var up = document.createElement("button"); up.textContent = "▲"; up.title = "Move up"; up.disabled = (i === 0);
+        var down = document.createElement("button"); down.textContent = "▼"; down.title = "Move down"; down.disabled = (i === mix.length - 1);
+        var rm = document.createElement("button"); rm.textContent = "✕"; rm.title = "Remove";
+        up.onclick = function () { swap(i, i - 1); };
+        down.onclick = function () { swap(i, i + 1); };
+        rm.onclick = function () { mix.splice(i, 1); renderMix(); };
+        ctrls.appendChild(up); ctrls.appendChild(down); ctrls.appendChild(rm);
+        row.appendChild(idx); row.appendChild(meta); row.appendChild(ctrls);
+        list.appendChild(row);
+      });
+      el("totalTime").textContent = fmtTime(total);
+      // clear stale share link when the mix changes
+      el("shareWrap").classList.add("hidden");
+    }
+    function swap(a, b) {
+      if (b < 0 || b >= mix.length) return;
+      var tmp = mix[a]; mix[a] = mix[b]; mix[b] = tmp;
+      renderMix();
+    }
+
+    function currentShareUrl() {
+      return buildShareUrl(mix, el("workoutName").value);
+    }
+
+    function copyLink() {
+      if (!mix.length) { notice(el("mixNotice"), "Add at least one video first.", "warn"); return; }
+      var url = currentShareUrl();
+      el("shareUrl").value = url;
+      el("shareWrap").classList.remove("hidden");
+      var done = function () { notice(el("mixNotice"), "Link copied! Text it to whoever you're working out with.", "ok"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(function () {
+          el("shareUrl").select();
+          notice(el("mixNotice"), "Couldn't copy automatically — the link is selected below, copy it manually.", "warn");
+        });
+      } else {
+        el("shareUrl").select();
+        notice(el("mixNotice"), "The link is below — copy it manually.", "warn");
+      }
+    }
+
+    function preview() {
+      if (!mix.length) { notice(el("mixNotice"), "Add at least one video first.", "warn"); return; }
+      window.open(currentShareUrl(), "_blank");
+    }
+
+    // ----- saved workouts -----
+    var SAVE_KEY = "workoutRemix.saved";
+    function loadSaved() {
+      try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; }
+      catch (e) { return []; }
+    }
+    function writeSaved(arr) {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(arr)); } catch (e) {}
+    }
+    function saveCurrent() {
+      if (!mix.length) { notice(el("mixNotice"), "Add at least one video before saving.", "warn"); return; }
+      var name = (el("workoutName").value || "").trim() || ("Workout " + fmtTime(mix.reduce(function (s, m) { return s + (m.dur || 0); }, 0)));
+      var arr = loadSaved();
+      // overwrite same-name entry if present
+      arr = arr.filter(function (w) { return w.name !== name; });
+      arr.unshift({
+        name: name,
+        items: mix.map(function (m) { return { id: m.id, dur: m.dur, title: m.title }; }),
+        savedAt: Date.now()
+      });
+      writeSaved(arr);
+      renderSaved();
+      notice(el("mixNotice"), "Saved as “" + name + "”.", "ok");
+    }
+    function renderSaved() {
+      var arr = loadSaved();
+      var box = el("savedList");
+      box.innerHTML = "";
+      el("savedEmpty").classList.toggle("hidden", arr.length > 0);
+      arr.forEach(function (w) {
+        var total = (w.items || []).reduce(function (s, m) { return s + (m.dur || 0); }, 0);
+        var row = document.createElement("div"); row.className = "saved-item";
+        var nm = document.createElement("div"); nm.className = "name";
+        nm.innerHTML = "<strong></strong> <span class='muted small'></span>";
+        nm.querySelector("strong").textContent = w.name;
+        nm.querySelector("span").textContent = (w.items || []).length + " videos · " + fmtTime(total);
+        var loadB = document.createElement("button"); loadB.textContent = "Load";
+        var linkB = document.createElement("button"); linkB.textContent = "Link";
+        var delB = document.createElement("button"); delB.textContent = "✕";
+        loadB.onclick = function () {
+          mix = (w.items || []).map(function (m) { return { id: m.id, dur: m.dur, title: m.title }; });
+          el("workoutName").value = w.name;
+          renderMix();
+          notice(el("mixNotice"), "Loaded “" + w.name + "”.", "ok");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        linkB.onclick = function () {
+          var url = buildShareUrl(w.items, w.name);
+          el("shareUrl").value = url;
+          el("shareWrap").classList.remove("hidden");
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(function(){});
+          notice(el("mixNotice"), "Share link for “" + w.name + "” copied.", "ok");
+        };
+        delB.onclick = function () {
+          var next = loadSaved().filter(function (x) { return !(x.name === w.name && x.savedAt === w.savedAt); });
+          writeSaved(next);
+          renderSaved();
+        };
+        row.appendChild(nm); row.appendChild(loadB); row.appendChild(linkB); row.appendChild(delB);
+        box.appendChild(row);
+      });
+    }
+
+    // ----- wire up -----
+    el("addBtn").onclick = addVideo;
+    el("urlInput").addEventListener("keydown", function (e) { if (e.key === "Enter") addVideo(); });
+    el("copyBtn").onclick = copyLink;
+    el("previewBtn").onclick = preview;
+    el("saveBtn").onclick = saveCurrent;
+
+    renderMix();
+    renderSaved();
+  }
+
+  // ============================================================
+  // PLAYER
+  // ============================================================
+  function initPlayer(workout) {
+    el("player").classList.remove("hidden");
+    var items = workout.items;
+    var title = workout.title || "Workout Remix";
+    document.title = title;
+    el("playerTitle").textContent = "🏋️ " + title;
+    el("overlayCount").textContent = items.length;
+
+    var totalPlanned = items.reduce(function (s, it) { return s + (it.dur || 0); }, 0);
+
+    // build segmented bar
+    var segBar = el("segBar");
+    segBar.innerHTML = "";
+    var segs = [];
+    items.forEach(function (it) {
+      var seg = document.createElement("div");
+      seg.className = "seg";
+      // weight segment width by duration when known, else equal
+      seg.style.flexGrow = String(Math.max(1, Math.round((it.dur || 0) / 30)) || 1);
+      var fill = document.createElement("div"); fill.className = "fill";
+      seg.appendChild(fill);
+      segBar.appendChild(seg);
+      segs.push({ seg: seg, fill: fill });
+    });
+
+    var player = null;
+    var current = 0;
+    var started = false;
+    var pollTimer = null;
+    var completed = false;
+    var usePlaylist = true;   // primary strategy
+
+    loadYTApi();
+
+    function markDone(upto) {
+      for (var i = 0; i < segs.length; i++) {
+        if (i < upto) segs[i].seg.classList.add("done");
+      }
+    }
+
+    function updateProgress() {
+      if (!player || !player.getCurrentTime) return;
+      var cur = 0, dur = 0;
+      try { cur = player.getCurrentTime() || 0; dur = player.getDuration() || 0; } catch (e) { return; }
+
+      // fill current segment
+      if (segs[current]) {
+        var pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
+        segs[current].fill.style.width = pct + "%";
+      }
+
+      // now playing
+      var data = {};
+      try { data = player.getVideoData() || {}; } catch (e) {}
+      el("npIndex").textContent = "Video " + (current + 1) + " of " + items.length;
+      el("npTitle").textContent = data.title || "";
+      el("npTitle").classList.remove("muted");
+
+      // time remaining across whole workout
+      // remaining = (dur - cur) for current + planned durations of later videos
+      var remaining = Math.max(0, dur - cur);
+      for (var i = current + 1; i < items.length; i++) remaining += (items[i].dur || 0);
+      // total = elapsed-in-current + all planned; fall back to totalPlanned when we know it
+      var totalRef = totalPlanned;
+      if (!totalRef) {
+        // no planned durations; approximate using known current dur only
+        totalRef = 0;
+        for (var j = 0; j < items.length; j++) totalRef += (items[j].dur || 0);
+      }
+      var line = fmtTime(remaining) + " left";
+      if (totalRef > 0) line += " of " + fmtTime(totalRef);
+      el("timeLine").textContent = line;
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(updateProgress, 1000);
+    }
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    function advanceManually() {
+      // used by fallback (non-playlist) and by skip
+      if (current >= items.length - 1) { onComplete(); return; }
+      segs[current].fill.style.width = "100%";
+      segs[current].seg.classList.add("done");
+      current++;
+      player.loadVideoById(items[current].id);
+    }
+
+    function onComplete() {
+      completed = true;
+      stopPolling();
+      markDone(segs.length);
+      el("npIndex").textContent = "✓ Done";
+      el("npTitle").textContent = "Workout complete — nice work!";
+      el("timeLine").textContent = "0:00 left of " + fmtTime(totalPlanned);
+      var ov = el("startOverlay");
+      ov.classList.remove("hidden");
+      el("overlayText").textContent = "🎉 Workout complete!";
+      el("startBtn").textContent = "↺ Do it again";
+    }
+
+    function syncIndexFromPlaylist() {
+      // In playlist mode, YouTube tracks its own index
+      if (!player || !player.getPlaylistIndex) return;
+      var pi = player.getPlaylistIndex();
+      if (typeof pi === "number" && pi >= 0 && pi !== current) {
+        // mark everything before pi as done
+        for (var i = 0; i < pi; i++) {
+          if (segs[i]) { segs[i].fill.style.width = "100%"; segs[i].seg.classList.add("done"); }
+        }
+        current = pi;
+      }
+    }
+
+    function onState(e) {
+      var S = YT.PlayerState;
+      if (e.data === S.PLAYING) {
+        started = true;
+        el("startOverlay").classList.add("hidden");
+        if (usePlaylist) syncIndexFromPlaylist();
+        startPolling();
+        updateProgress();
+      } else if (e.data === S.ENDED) {
+        if (usePlaylist) {
+          // playlist auto-advances; ENDED only fires at the very end of the list
+          onComplete();
+        } else {
+          advanceManually();
+        }
+      } else if (e.data === S.CUED) {
+        // ready
+      }
+    }
+
+    function onErr(e) {
+      // skip the offending video
+      var msg = "Video " + (current + 1) + " couldn't play — skipping.";
+      notice(el("playerNotice"), msg, "warn");
+      setTimeout(function () { el("playerNotice").innerHTML = ""; }, 4000);
+      if (usePlaylist) {
+        if (player.nextVideo) player.nextVideo();
+        else advanceManually();
+      } else {
+        advanceManually();
+      }
+    }
+
+    function createPlayer(startFn) {
+      player = new YT.Player("ytplayer", {
+        width: "100%", height: "100%",
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          origin: originParam()
+        },
+        events: {
+          onReady: function () { if (startFn) startFn(); },
+          onStateChange: onState,
+          onError: onErr
+        }
+      });
+    }
+
+    function startWorkout() {
+      completed = false;
+      current = 0;
+      segs.forEach(function (s) { s.fill.style.width = "0%"; s.seg.classList.remove("done"); });
+      el("startOverlay").classList.add("hidden");
+      var ids = items.map(function (it) { return it.id; });
+
+      var kickoff = function () {
+        if (usePlaylist && player.loadPlaylist) {
+          player.loadPlaylist(ids);
+        } else {
+          usePlaylist = false;
+          player.loadVideoById(ids[0]);
+        }
+      };
+
+      if (!player) createPlayer(kickoff);
+      else kickoff();
+    }
+
+    // start button (user gesture unlocks iOS audio)
+    el("startBtn").addEventListener("click", startWorkout);
+    el("skipBtn").addEventListener("click", function () {
+      if (!started) return;
+      if (usePlaylist && player.nextVideo) {
+        if (current >= items.length - 1) { onComplete(); }
+        else { player.nextVideo(); }
+      } else {
+        advanceManually();
+      }
+    });
+    el("restartBtn").addEventListener("click", startWorkout);
+    el("editLink").addEventListener("click", function (e) {
+      e.preventDefault();
+      location.href = location.origin + location.pathname;
+    });
+
+    // initialize first render
+    updateProgress();
+  }
+
+  // ============================================================
+  // BOOT
+  // ============================================================
+  document.addEventListener("DOMContentLoaded", function () {
+    var workout = parseWorkoutFromUrl();
+    if (workout && workout.items.length) {
+      initPlayer(workout);
+    } else {
+      initBuilder();
+    }
+  });
+})();
+</script>
+</body>
+</html>
