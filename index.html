@@ -33,7 +33,8 @@
   }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   h2 { font-size: 1.05rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
+  .nav { margin: 0 0 18px; }
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -102,6 +103,7 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     margin-bottom: 8px;
+    flex-wrap: wrap;
   }
   .mix-item .idx {
     width: 26px; height: 26px; flex: 0 0 auto;
@@ -109,12 +111,13 @@
     background: var(--accent); color: #fff; border-radius: 50%;
     font-size: 0.85rem; font-weight: 700;
   }
-  .mix-item .meta { flex: 1 1 auto; min-width: 0; }
+  .mix-item .meta { flex: 1 1 180px; min-width: 0; }
   .mix-item .title {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: 0.95rem;
   }
   .mix-item .dur { color: var(--muted); font-size: 0.8rem; }
+  .mix-item .dur .trim { color: var(--accent-2); }
   .mix-item .ctrls { display: flex; gap: 4px; flex: 0 0 auto; }
   .mix-item .ctrls button { padding: 8px 10px; min-width: 40px; }
   .total-bar {
@@ -130,6 +133,13 @@
   .saved-item:last-child { border-bottom: none; }
   .saved-item .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .saved-item button { padding: 8px 10px; font-size: 0.85rem; }
+
+  /* Clip editor */
+  .clip-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+  .clip-fields .field { display: flex; gap: 6px; align-items: center; }
+  .clip-fields label { color: var(--muted); font-size: 0.9rem; }
+  .clip-fields input[type="text"] { width: 84px; padding: 8px; }
+  #cScrub { width: 100%; margin: 10px 0 4px; accent-color: var(--accent); }
 
   /* Player */
   .video-frame {
@@ -167,10 +177,11 @@
 <body>
 <div class="wrap">
 
-  <!-- ============ BUILDER VIEW ============ -->
+  <!-- ============ SIMPLE BUILDER VIEW ============ -->
   <div id="builder" class="hidden">
     <h1>🏋️ Workout Remix</h1>
     <p class="sub">Stitch several YouTube videos into one no-break, no-ad workout. Build a mix, share the link.</p>
+    <p class="nav"><a href="?mode=clip" class="link" id="toClip">✂️ Need to trim intros/cooldowns or reorder pieces? → Clip builder</a></p>
 
     <div class="panel">
       <h2>Add a video</h2>
@@ -212,6 +223,77 @@
     <p class="foot">Ad-free playback relies on YouTube's embedded player behaving as it does on sites like PopSugar. It's not guaranteed by YouTube — use Preview to check a video before a workout.</p>
   </div>
 
+  <!-- ============ CLIP BUILDER VIEW ============ -->
+  <div id="clipBuilder" class="hidden">
+    <h1>✂️ Workout Remix — Clip Builder</h1>
+    <p class="sub">Trim intros, warm-ups and cooldowns, and reorder pieces. The same video can appear more than once — e.g. its cooldown moved to the very end.</p>
+    <p class="nav"><a href="./" class="link" id="toSimple">← Simple builder (whole videos)</a></p>
+
+    <div class="panel">
+      <h2>Add a video</h2>
+      <div class="row row-wrap">
+        <input id="cUrlInput" class="grow" type="text" placeholder="Paste a YouTube link or video ID" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="cAddBtn" class="btn-primary">Add</button>
+      </div>
+      <div id="cAddNotice"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Your clips</h2>
+      <div id="cMixList"></div>
+      <div id="cMixEmpty" class="muted small">No clips yet. Add a video above, then hit Edit to trim it.</div>
+      <div class="total-bar">
+        <span class="muted">Total time</span>
+        <strong id="cTotalTime">0:00</strong>
+      </div>
+      <div class="row row-wrap" style="margin-top:14px;">
+        <input id="cWorkoutName" class="grow" type="text" placeholder="Name this workout (optional)" autocomplete="off">
+      </div>
+      <div class="player-controls">
+        <button id="cCopyBtn" class="btn-primary">📋 Copy share link</button>
+        <button id="cPreviewBtn">▶ Preview</button>
+        <button id="cSaveBtn">💾 Save</button>
+      </div>
+      <div id="cShareWrap" class="hidden" style="margin-top:10px;">
+        <input id="cShareUrl" type="text" readonly>
+      </div>
+      <div id="cMixNotice"></div>
+    </div>
+
+    <!-- Clip editor (shown when editing a clip) -->
+    <div class="panel hidden" id="cEditor">
+      <h2 id="cEditorTitle">Editing clip</h2>
+      <div class="video-frame"><div id="cEditorPlayer"></div></div>
+      <input type="range" id="cScrub" min="0" max="100" step="1" value="0">
+      <div class="time-line"><span id="cCurTime">0:00</span> / <span id="cDurTime">0:00</span></div>
+      <div class="clip-fields">
+        <div class="field">
+          <label>Start</label>
+          <input id="cStartField" type="text" inputmode="numeric">
+          <button id="cSetStart">Set to current</button>
+        </div>
+        <div class="field">
+          <label>End</label>
+          <input id="cEndField" type="text" inputmode="numeric">
+          <button id="cSetEnd">Set to current</button>
+        </div>
+      </div>
+      <div class="player-controls">
+        <button id="cPlayPause">▶ / ❚❚</button>
+        <button id="cPreviewClip">Preview clip</button>
+        <button id="cEditorDone" class="btn-primary">Done</button>
+      </div>
+    </div>
+
+    <div class="panel" id="cSavedPanel">
+      <h2>Saved clip workouts</h2>
+      <div id="cSavedList"></div>
+      <div id="cSavedEmpty" class="muted small">Nothing saved yet.</div>
+    </div>
+
+    <p class="foot">Trim points are captured in the share link, so anyone who opens it gets the exact same edited workout. Ad-free playback relies on YouTube's embedded player, same as the simple builder.</p>
+  </div>
+
   <!-- ============ PLAYER VIEW ============ -->
   <div id="player" class="hidden">
     <h1 id="playerTitle" style="font-size:1.25rem;">🏋️ Workout</h1>
@@ -244,8 +326,9 @@
 <script>
 /* ============================================================
    Workout Remix — single-file app
-   - Builder view (no ?v=) lets you assemble a mix + share link
-   - Player view (?v=id:dur,id:dur,...) plays them back-to-back
+   - Simple builder (plain URL): whole-video mixes
+   - Clip builder (?mode=clip): trim + reorder pieces
+   - Player (?v=...): plays them back-to-back, no breaks
    ============================================================ */
 
 (function () {
@@ -271,6 +354,19 @@
     return m + ":" + String(s).padStart(2, "0");
   }
 
+  // Parse "1:30" / "90" / "1:02:03" -> seconds (or null)
+  function parseTime(str) {
+    if (str == null) return null;
+    str = ("" + str).trim();
+    if (!str) return null;
+    if (/^\d+$/.test(str)) return parseInt(str, 10);
+    var parts = str.split(":").map(function (p) { return Number(p); });
+    if (parts.some(function (n) { return isNaN(n); })) return null;
+    var sec = 0;
+    for (var i = 0; i < parts.length; i++) sec = sec * 60 + parts[i];
+    return sec;
+  }
+
   function el(id) { return document.getElementById(id); }
 
   function notice(container, msg, kind) {
@@ -283,7 +379,21 @@
     return d;
   }
 
-  // Parse ?v= into [{id, dur}]
+  // Effective (played) length of a clip in seconds
+  function clipLen(it) {
+    var s = it.start || 0;
+    var e = (it.end != null ? it.end : it.dur) || 0;
+    return Math.max(0, e - s);
+  }
+  // Is this entry actually trimmed (vs. a whole video)?
+  function isTrimmed(it) {
+    var d = it.dur || 0;
+    if ((it.start || 0) > 0) return true;
+    if (it.end != null && it.end < d) return true;
+    return false;
+  }
+
+  // Parse ?v= into [{id, dur, start?, end?}]
   function parseWorkoutFromUrl() {
     var params = new URLSearchParams(location.search);
     var v = params.get("v");
@@ -294,8 +404,16 @@
       if (!chunk) return;
       var parts = chunk.split(":");
       var id = parts[0];
+      if (!id || id.length !== 11) return;
       var dur = parts[1] ? parseInt(parts[1], 10) : 0;
-      if (id && id.length === 11) items.push({ id: id, dur: isNaN(dur) ? 0 : dur });
+      var item = { id: id, dur: isNaN(dur) ? 0 : dur };
+      if (parts.length >= 4) {
+        var s = parseInt(parts[2], 10);
+        var e = parseInt(parts[3], 10);
+        if (!isNaN(s)) item.start = s;
+        if (!isNaN(e)) item.end = e;
+      }
+      items.push(item);
     });
     var title = params.get("t") || "";
     return { items: items, title: title };
@@ -303,7 +421,15 @@
 
   function buildShareUrl(items, name) {
     var base = location.origin + location.pathname;
-    var v = items.map(function (it) { return it.id + ":" + Math.round(it.dur || 0); }).join(",");
+    var v = items.map(function (it) {
+      var d = Math.round(it.dur || 0);
+      if (isTrimmed(it)) {
+        var s = Math.round(it.start || 0);
+        var e = Math.round(it.end != null ? it.end : it.dur || 0);
+        return it.id + ":" + d + ":" + s + ":" + e;
+      }
+      return it.id + ":" + d;
+    }).join(",");
     var url = base + "?v=" + v;
     if (name && name.trim()) url += "&t=" + encodeURIComponent(name.trim());
     return url;
@@ -337,17 +463,11 @@
   }
 
   // ============================================================
-  // BUILDER
+  // Metadata lookup — hidden player that cues videos to read
+  // duration + title without playing. Shared by both builders.
   // ============================================================
-  function initBuilder() {
-    el("builder").classList.remove("hidden");
-    document.title = "Workout Remix — Builder";
-
-    var mix = [];                 // [{id, dur, title}]
-    var metaPlayer = null;        // hidden player for cueing metadata
-    var cueQueue = [];            // ids waiting for metadata
-    var cueActive = null;         // {id, resolve, reject}
-    var cueTimer = null;
+  function createMetaLookup() {
+    var metaPlayer = null, cueQueue = [], cueActive = null, cueTimer = null;
 
     loadYTApi();
     whenYTReady(function () {
@@ -387,7 +507,6 @@
     function pumpCue() {
       if (cueActive || !cueQueue.length || !metaPlayer || !metaPlayer.cueVideoById) {
         if (!metaPlayer || !metaPlayer.cueVideoById) {
-          // API not ready yet; retry shortly
           if (cueQueue.length) setTimeout(pumpCue, 300);
         }
         return;
@@ -408,7 +527,27 @@
       pumpCue();
     }
 
-    // ----- add flow -----
+    return cueMeta;
+  }
+
+  // Turn a cue error code into a friendly message
+  function cueErrorMessage(err) {
+    if (err === 101 || err === 150) return "That video's owner has disabled embedding — it can't be used in a remix.";
+    if (err === 100) return "That video is unavailable (removed or private).";
+    if (err === "timeout") return "Timed out loading that video. Check the link and try again.";
+    return "Couldn't load that video.";
+  }
+
+  // ============================================================
+  // SIMPLE BUILDER (whole videos)
+  // ============================================================
+  function initBuilder() {
+    el("builder").classList.remove("hidden");
+    document.title = "Workout Remix — Builder";
+
+    var mix = [];                       // [{id, dur, title}]
+    var cueMeta = createMetaLookup();
+
     function addVideo() {
       var raw = el("urlInput").value;
       var id = parseVideoId(raw);
@@ -431,11 +570,7 @@
         notice(el("addNotice"), "", "ok");
         renderMix();
       }).catch(function (err) {
-        var msg = "Couldn't load that video";
-        if (err === 101 || err === 150) msg = "That video's owner has disabled embedding — it can't be used in a remix.";
-        else if (err === 100) msg = "That video is unavailable (removed or private).";
-        else if (err === "timeout") msg = "Timed out loading that video. Check the link and try again.";
-        notice(el("addNotice"), msg, "err");
+        notice(el("addNotice"), cueErrorMessage(err), "err");
       }).then(function () {
         addBtn.disabled = false;
         addBtn.textContent = "Add";
@@ -468,7 +603,6 @@
         list.appendChild(row);
       });
       el("totalTime").textContent = fmtTime(total);
-      // clear stale share link when the mix changes
       el("shareWrap").classList.add("hidden");
     }
     function swap(a, b) {
@@ -477,9 +611,7 @@
       renderMix();
     }
 
-    function currentShareUrl() {
-      return buildShareUrl(mix, el("workoutName").value);
-    }
+    function currentShareUrl() { return buildShareUrl(mix, el("workoutName").value); }
 
     function copyLink() {
       if (!mix.length) { notice(el("mixNotice"), "Add at least one video first.", "warn"); return; }
@@ -503,21 +635,14 @@
       window.open(currentShareUrl(), "_blank");
     }
 
-    // ----- saved workouts -----
+    // saved workouts
     var SAVE_KEY = "workoutRemix.saved";
-    function loadSaved() {
-      try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; }
-      catch (e) { return []; }
-    }
-    function writeSaved(arr) {
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(arr)); } catch (e) {}
-    }
+    function loadSaved() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; } catch (e) { return []; } }
+    function writeSaved(arr) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(arr)); } catch (e) {} }
     function saveCurrent() {
       if (!mix.length) { notice(el("mixNotice"), "Add at least one video before saving.", "warn"); return; }
       var name = (el("workoutName").value || "").trim() || ("Workout " + fmtTime(mix.reduce(function (s, m) { return s + (m.dur || 0); }, 0)));
-      var arr = loadSaved();
-      // overwrite same-name entry if present
-      arr = arr.filter(function (w) { return w.name !== name; });
+      var arr = loadSaved().filter(function (w) { return w.name !== name; });
       arr.unshift({
         name: name,
         items: mix.map(function (m) { return { id: m.id, dur: m.dur, title: m.title }; }),
@@ -534,11 +659,12 @@
       el("savedEmpty").classList.toggle("hidden", arr.length > 0);
       arr.forEach(function (w) {
         var total = (w.items || []).reduce(function (s, m) { return s + (m.dur || 0); }, 0);
-        var row = document.createElement("div"); row.className = "saved-item";
+        var rowEl = document.createElement("div"); rowEl.className = "saved-item";
         var nm = document.createElement("div"); nm.className = "name";
-        nm.innerHTML = "<strong></strong> <span class='muted small'></span>";
-        nm.querySelector("strong").textContent = w.name;
-        nm.querySelector("span").textContent = (w.items || []).length + " videos · " + fmtTime(total);
+        var strong = document.createElement("strong"); strong.textContent = w.name;
+        var span = document.createElement("span"); span.className = "muted small";
+        span.textContent = " " + (w.items || []).length + " videos · " + fmtTime(total);
+        nm.appendChild(strong); nm.appendChild(span);
         var loadB = document.createElement("button"); loadB.textContent = "Load";
         var linkB = document.createElement("button"); linkB.textContent = "Link";
         var delB = document.createElement("button"); delB.textContent = "✕";
@@ -553,7 +679,7 @@
           var url = buildShareUrl(w.items, w.name);
           el("shareUrl").value = url;
           el("shareWrap").classList.remove("hidden");
-          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(function(){});
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(function () {});
           notice(el("mixNotice"), "Share link for “" + w.name + "” copied.", "ok");
         };
         delB.onclick = function () {
@@ -561,17 +687,304 @@
           writeSaved(next);
           renderSaved();
         };
-        row.appendChild(nm); row.appendChild(loadB); row.appendChild(linkB); row.appendChild(delB);
-        box.appendChild(row);
+        rowEl.appendChild(nm); rowEl.appendChild(loadB); rowEl.appendChild(linkB); rowEl.appendChild(delB);
+        box.appendChild(rowEl);
       });
     }
 
-    // ----- wire up -----
     el("addBtn").onclick = addVideo;
     el("urlInput").addEventListener("keydown", function (e) { if (e.key === "Enter") addVideo(); });
     el("copyBtn").onclick = copyLink;
     el("previewBtn").onclick = preview;
     el("saveBtn").onclick = saveCurrent;
+    el("toClip").onclick = function (e) { e.preventDefault(); location.search = "?mode=clip"; };
+
+    renderMix();
+    renderSaved();
+  }
+
+  // ============================================================
+  // CLIP BUILDER (trim + reorder pieces)
+  // ============================================================
+  function initClipBuilder() {
+    el("clipBuilder").classList.remove("hidden");
+    document.title = "Workout Remix — Clip Builder";
+
+    var mix = [];                       // [{id, dur, title, start, end}]
+    var cueMeta = createMetaLookup();
+
+    // editor state
+    var editorPlayer = null;
+    var editingIndex = -1;
+    var editorTimer = null;
+    var previewEnd = null;
+
+    function addVideo() {
+      var raw = el("cUrlInput").value;
+      var id = parseVideoId(raw);
+      if (!id) {
+        notice(el("cAddNotice"), "Couldn't find a YouTube video ID in that. Paste a full link or an 11-character ID.", "err");
+        return;
+      }
+      var addBtn = el("cAddBtn");
+      addBtn.disabled = true;
+      addBtn.textContent = "…";
+      notice(el("cAddNotice"), "Looking up “" + id + "”…", "ok");
+
+      cueMeta(id).then(function (data) {
+        var dur = data.dur || 0;
+        mix.push({ id: id, dur: dur, title: data.title || ("Video " + id), start: 0, end: dur });
+        el("cUrlInput").value = "";
+        notice(el("cAddNotice"), "", "ok");
+        renderMix();
+      }).catch(function (err) {
+        notice(el("cAddNotice"), cueErrorMessage(err), "err");
+      }).then(function () {
+        addBtn.disabled = false;
+        addBtn.textContent = "Add";
+      });
+    }
+
+    function clipDesc(item) {
+      var trimmed = isTrimmed(item);
+      var range = fmtTime(item.start || 0) + "–" + fmtTime(item.end != null ? item.end : item.dur || 0);
+      var len = fmtTime(clipLen(item));
+      return { trimmed: trimmed, range: range, len: len };
+    }
+
+    function renderMix() {
+      var list = el("cMixList");
+      list.innerHTML = "";
+      el("cMixEmpty").classList.toggle("hidden", mix.length > 0);
+      var total = 0;
+      mix.forEach(function (item, i) {
+        total += clipLen(item);
+        var d = clipDesc(item);
+        var row = document.createElement("div");
+        row.className = "mix-item";
+        var idx = document.createElement("div"); idx.className = "idx"; idx.textContent = (i + 1);
+        var meta = document.createElement("div"); meta.className = "meta";
+        var t = document.createElement("div"); t.className = "title"; t.textContent = item.title;
+        var dd = document.createElement("div"); dd.className = "dur";
+        if (d.trimmed) dd.innerHTML = "<span class='trim'>✂ " + d.range + "</span> · plays " + d.len;
+        else dd.textContent = "full video · " + d.len;
+        meta.appendChild(t); meta.appendChild(dd);
+        var ctrls = document.createElement("div"); ctrls.className = "ctrls";
+        var edit = document.createElement("button"); edit.textContent = "✂ Edit"; edit.title = "Trim this clip";
+        var dup = document.createElement("button"); dup.textContent = "⧉"; dup.title = "Duplicate";
+        var up = document.createElement("button"); up.textContent = "▲"; up.title = "Move up"; up.disabled = (i === 0);
+        var down = document.createElement("button"); down.textContent = "▼"; down.title = "Move down"; down.disabled = (i === mix.length - 1);
+        var rm = document.createElement("button"); rm.textContent = "✕"; rm.title = "Remove";
+        edit.onclick = function () { openEditor(i); };
+        dup.onclick = function () { closeEditor(); var copy = { id: item.id, dur: item.dur, title: item.title, start: item.start || 0, end: (item.end != null ? item.end : item.dur) }; mix.splice(i + 1, 0, copy); renderMix(); };
+        up.onclick = function () { closeEditor(); swap(i, i - 1); };
+        down.onclick = function () { closeEditor(); swap(i, i + 1); };
+        rm.onclick = function () { closeEditor(); mix.splice(i, 1); renderMix(); };
+        ctrls.appendChild(edit); ctrls.appendChild(dup); ctrls.appendChild(up); ctrls.appendChild(down); ctrls.appendChild(rm);
+        row.appendChild(idx); row.appendChild(meta); row.appendChild(ctrls);
+        list.appendChild(row);
+      });
+      el("cTotalTime").textContent = fmtTime(total);
+      el("cShareWrap").classList.add("hidden");
+    }
+    function swap(a, b) {
+      if (b < 0 || b >= mix.length) return;
+      var tmp = mix[a]; mix[a] = mix[b]; mix[b] = tmp;
+      renderMix();
+    }
+
+    // ----- clip editor -----
+    function openEditor(i) {
+      editingIndex = i;
+      var clip = mix[i];
+      el("cEditor").classList.remove("hidden");
+      el("cEditorTitle").textContent = "Editing clip " + (i + 1) + ": " + clip.title;
+      var end = clip.end != null ? clip.end : clip.dur || 0;
+      el("cScrub").max = Math.max(1, Math.floor(clip.dur || 0));
+      el("cScrub").value = clip.start || 0;
+      el("cDurTime").textContent = fmtTime(clip.dur || 0);
+      el("cCurTime").textContent = fmtTime(clip.start || 0);
+      el("cStartField").value = fmtTime(clip.start || 0);
+      el("cEndField").value = fmtTime(end);
+
+      var load = function () { editorPlayer.cueVideoById({ videoId: clip.id, startSeconds: clip.start || 0 }); };
+      if (!editorPlayer) {
+        editorPlayer = new YT.Player("cEditorPlayer", {
+          width: "100%", height: "100%",
+          playerVars: { playsinline: 1, rel: 0, origin: originParam() },
+          events: {
+            onReady: load,
+            onStateChange: function (e) {
+              if (e.data === YT.PlayerState.PLAYING) startEditorPoll();
+            }
+          }
+        });
+      } else {
+        load();
+      }
+      el("cEditor").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    function closeEditor() {
+      if (editorPlayer && editorPlayer.pauseVideo) { try { editorPlayer.pauseVideo(); } catch (e) {} }
+      stopEditorPoll();
+      previewEnd = null;
+      editingIndex = -1;
+      el("cEditor").classList.add("hidden");
+    }
+    function startEditorPoll() { if (editorTimer) return; editorTimer = setInterval(editorTick, 250); }
+    function stopEditorPoll() { if (editorTimer) { clearInterval(editorTimer); editorTimer = null; } }
+    function editorTick() {
+      if (!editorPlayer || !editorPlayer.getCurrentTime) return;
+      var t = 0;
+      try { t = editorPlayer.getCurrentTime() || 0; } catch (e) { return; }
+      el("cScrub").value = Math.floor(t);
+      el("cCurTime").textContent = fmtTime(t);
+      if (previewEnd != null && t >= previewEnd) {
+        try { editorPlayer.pauseVideo(); } catch (e) {}
+        previewEnd = null;
+      }
+    }
+    function setStart(t) {
+      var clip = mix[editingIndex];
+      if (!clip) return;
+      var end = clip.end != null ? clip.end : clip.dur || 0;
+      t = Math.max(0, Math.min(t, clip.dur || 0));
+      if (t >= end) t = Math.max(0, end - 1);
+      clip.start = t;
+      el("cStartField").value = fmtTime(t);
+      renderMix();
+    }
+    function setEnd(t) {
+      var clip = mix[editingIndex];
+      if (!clip) return;
+      t = Math.max((clip.start || 0) + 1, Math.min(t, clip.dur || t));
+      clip.end = t;
+      el("cEndField").value = fmtTime(t);
+      renderMix();
+    }
+
+    function currentShareUrl() { return buildShareUrl(mix, el("cWorkoutName").value); }
+
+    function copyLink() {
+      if (!mix.length) { notice(el("cMixNotice"), "Add at least one clip first.", "warn"); return; }
+      var url = currentShareUrl();
+      el("cShareUrl").value = url;
+      el("cShareWrap").classList.remove("hidden");
+      var done = function () { notice(el("cMixNotice"), "Link copied! Text it to whoever you're working out with.", "ok"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(function () {
+          el("cShareUrl").select();
+          notice(el("cMixNotice"), "Couldn't copy automatically — the link is selected below, copy it manually.", "warn");
+        });
+      } else {
+        el("cShareUrl").select();
+        notice(el("cMixNotice"), "The link is below — copy it manually.", "warn");
+      }
+    }
+
+    function preview() {
+      if (!mix.length) { notice(el("cMixNotice"), "Add at least one clip first.", "warn"); return; }
+      window.open(currentShareUrl(), "_blank");
+    }
+
+    // saved clip workouts (separate list from the simple builder)
+    var SAVE_KEY = "workoutRemix.savedClips";
+    function loadSaved() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; } catch (e) { return []; } }
+    function writeSaved(arr) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(arr)); } catch (e) {} }
+    function saveCurrent() {
+      if (!mix.length) { notice(el("cMixNotice"), "Add at least one clip before saving.", "warn"); return; }
+      var name = (el("cWorkoutName").value || "").trim() || ("Workout " + fmtTime(mix.reduce(function (s, m) { return s + clipLen(m); }, 0)));
+      var arr = loadSaved().filter(function (w) { return w.name !== name; });
+      arr.unshift({
+        name: name,
+        items: mix.map(function (m) { return { id: m.id, dur: m.dur, title: m.title, start: m.start || 0, end: (m.end != null ? m.end : m.dur) }; }),
+        savedAt: Date.now()
+      });
+      writeSaved(arr);
+      renderSaved();
+      notice(el("cMixNotice"), "Saved as “" + name + "”.", "ok");
+    }
+    function renderSaved() {
+      var arr = loadSaved();
+      var box = el("cSavedList");
+      box.innerHTML = "";
+      el("cSavedEmpty").classList.toggle("hidden", arr.length > 0);
+      arr.forEach(function (w) {
+        var total = (w.items || []).reduce(function (s, m) { return s + clipLen(m); }, 0);
+        var rowEl = document.createElement("div"); rowEl.className = "saved-item";
+        var nm = document.createElement("div"); nm.className = "name";
+        var strong = document.createElement("strong"); strong.textContent = w.name;
+        var span = document.createElement("span"); span.className = "muted small";
+        span.textContent = " " + (w.items || []).length + " clips · " + fmtTime(total);
+        nm.appendChild(strong); nm.appendChild(span);
+        var loadB = document.createElement("button"); loadB.textContent = "Load";
+        var linkB = document.createElement("button"); linkB.textContent = "Link";
+        var delB = document.createElement("button"); delB.textContent = "✕";
+        loadB.onclick = function () {
+          closeEditor();
+          mix = (w.items || []).map(function (m) { return { id: m.id, dur: m.dur, title: m.title, start: m.start || 0, end: (m.end != null ? m.end : m.dur) }; });
+          el("cWorkoutName").value = w.name;
+          renderMix();
+          notice(el("cMixNotice"), "Loaded “" + w.name + "”.", "ok");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        linkB.onclick = function () {
+          var url = buildShareUrl(w.items, w.name);
+          el("cShareUrl").value = url;
+          el("cShareWrap").classList.remove("hidden");
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(function () {});
+          notice(el("cMixNotice"), "Share link for “" + w.name + "” copied.", "ok");
+        };
+        delB.onclick = function () {
+          var next = loadSaved().filter(function (x) { return !(x.name === w.name && x.savedAt === w.savedAt); });
+          writeSaved(next);
+          renderSaved();
+        };
+        rowEl.appendChild(nm); rowEl.appendChild(loadB); rowEl.appendChild(linkB); rowEl.appendChild(delB);
+        box.appendChild(rowEl);
+      });
+    }
+
+    // wire up
+    el("cAddBtn").onclick = addVideo;
+    el("cUrlInput").addEventListener("keydown", function (e) { if (e.key === "Enter") addVideo(); });
+    el("cCopyBtn").onclick = copyLink;
+    el("cPreviewBtn").onclick = preview;
+    el("cSaveBtn").onclick = saveCurrent;
+    el("toSimple").onclick = function (e) { e.preventDefault(); location.href = location.origin + location.pathname; };
+
+    el("cScrub").addEventListener("input", function () {
+      var v = parseInt(this.value, 10) || 0;
+      el("cCurTime").textContent = fmtTime(v);
+      previewEnd = null;
+      if (editorPlayer && editorPlayer.seekTo) { try { editorPlayer.seekTo(v, true); } catch (e) {} }
+    });
+    el("cSetStart").onclick = function () { if (editorPlayer && editorPlayer.getCurrentTime) setStart(Math.round(editorPlayer.getCurrentTime() || 0)); };
+    el("cSetEnd").onclick = function () { if (editorPlayer && editorPlayer.getCurrentTime) setEnd(Math.round(editorPlayer.getCurrentTime() || 0)); };
+    el("cStartField").addEventListener("change", function () {
+      var s = parseTime(this.value);
+      if (s != null) setStart(Math.round(s));
+      else this.value = fmtTime((mix[editingIndex] || {}).start || 0);
+    });
+    el("cEndField").addEventListener("change", function () {
+      var e = parseTime(this.value);
+      var clip = mix[editingIndex] || {};
+      if (e != null) setEnd(Math.round(e));
+      else this.value = fmtTime(clip.end != null ? clip.end : clip.dur || 0);
+    });
+    el("cPlayPause").onclick = function () {
+      if (!editorPlayer || !editorPlayer.getPlayerState) return;
+      var st = editorPlayer.getPlayerState();
+      if (st === YT.PlayerState.PLAYING) editorPlayer.pauseVideo();
+      else editorPlayer.playVideo();
+    };
+    el("cPreviewClip").onclick = function () {
+      if (!editorPlayer || editingIndex < 0) return;
+      var clip = mix[editingIndex];
+      previewEnd = clip.end != null ? clip.end : clip.dur;
+      try { editorPlayer.seekTo(clip.start || 0, true); editorPlayer.playVideo(); } catch (e) {}
+    };
+    el("cEditorDone").onclick = closeEditor;
 
     renderMix();
     renderSaved();
@@ -588,17 +1001,20 @@
     el("playerTitle").textContent = "🏋️ " + title;
     el("overlayCount").textContent = items.length;
 
-    var totalPlanned = items.reduce(function (s, it) { return s + (it.dur || 0); }, 0);
+    // Clips force chain mode; whole-video mixes keep the native playlist path.
+    var hasClips = items.some(function (it) { return it.start != null || it.end != null; });
+    var usePlaylist = !hasClips;
 
-    // build segmented bar
+    var totalPlanned = items.reduce(function (s, it) { return s + clipLen(it); }, 0);
+
+    // segmented bar (weighted by played length)
     var segBar = el("segBar");
     segBar.innerHTML = "";
     var segs = [];
     items.forEach(function (it) {
       var seg = document.createElement("div");
       seg.className = "seg";
-      // weight segment width by duration when known, else equal
-      seg.style.flexGrow = String(Math.max(1, Math.round((it.dur || 0) / 30)) || 1);
+      seg.style.flexGrow = String(Math.max(1, Math.round(clipLen(it) / 30)) || 1);
       var fill = document.createElement("div"); fill.className = "fill";
       seg.appendChild(fill);
       segBar.appendChild(seg);
@@ -608,75 +1024,88 @@
     var player = null;
     var current = 0;
     var started = false;
+    var advancing = false;
     var pollTimer = null;
-    var completed = false;
-    var usePlaylist = true;   // primary strategy
 
     loadYTApi();
-
-    function markDone(upto) {
-      for (var i = 0; i < segs.length; i++) {
-        if (i < upto) segs[i].seg.classList.add("done");
-      }
-    }
 
     function updateProgress() {
       if (!player || !player.getCurrentTime) return;
       var cur = 0, dur = 0;
       try { cur = player.getCurrentTime() || 0; dur = player.getDuration() || 0; } catch (e) { return; }
 
-      // fill current segment
+      var it = items[current] || {};
+      var s = it.start || 0;
+      var e = (it.end != null ? it.end : dur) || 0;
+      var len = Math.max(1, e - s);
+      var elapsed = Math.max(0, cur - s);
+
       if (segs[current]) {
-        var pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
-        segs[current].fill.style.width = pct + "%";
+        segs[current].fill.style.width = Math.min(100, (elapsed / len) * 100) + "%";
       }
 
-      // now playing
+      // chain-mode clip end: advance when we reach the clip's end point
+      if (!usePlaylist && it.end != null && cur >= it.end - 0.3) {
+        endTrigger();
+        return;
+      }
+
       var data = {};
-      try { data = player.getVideoData() || {}; } catch (e) {}
+      try { data = player.getVideoData() || {}; } catch (ex) {}
       el("npIndex").textContent = "Video " + (current + 1) + " of " + items.length;
       el("npTitle").textContent = data.title || "";
       el("npTitle").classList.remove("muted");
 
-      // time remaining across whole workout
-      // remaining = (dur - cur) for current + planned durations of later videos
-      var remaining = Math.max(0, dur - cur);
-      for (var i = current + 1; i < items.length; i++) remaining += (items[i].dur || 0);
-      // total = elapsed-in-current + all planned; fall back to totalPlanned when we know it
-      var totalRef = totalPlanned;
-      if (!totalRef) {
-        // no planned durations; approximate using known current dur only
-        totalRef = 0;
-        for (var j = 0; j < items.length; j++) totalRef += (items[j].dur || 0);
-      }
+      var remaining = Math.max(0, e - cur);
+      for (var i = current + 1; i < items.length; i++) remaining += clipLen(items[i]);
       var line = fmtTime(remaining) + " left";
-      if (totalRef > 0) line += " of " + fmtTime(totalRef);
+      if (totalPlanned > 0) line += " of " + fmtTime(totalPlanned);
       el("timeLine").textContent = line;
     }
 
-    function startPolling() {
-      if (pollTimer) return;
-      pollTimer = setInterval(updateProgress, 1000);
-    }
-    function stopPolling() {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    function startPolling() { if (!pollTimer) pollTimer = setInterval(updateProgress, 1000); }
+    function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+    function loadCurrent() {
+      var it = items[current];
+      var arg = { videoId: it.id, startSeconds: it.start || 0 };
+      if (it.end != null) arg.endSeconds = it.end;
+      player.loadVideoById(arg);
     }
 
-    function advanceManually() {
-      // used by fallback (non-playlist) and by skip
+    // ENDED (and the poll) can fire spuriously right after loading the next
+    // clip — especially when consecutive clips are the SAME video ID (the
+    // "cooldown moved to the end" trick). A real end only happens when the
+    // player is actually near the current clip's end point, so filter on that.
+    function endTrigger() {
+      var it = items[current];
+      if (it && it.end != null) {
+        var cur = 0;
+        try { cur = player.getCurrentTime() || 0; } catch (e) {}
+        if (cur < it.end - 1.5) return;   // spurious (same-video reload); ignore
+      }
+      advanceChain();
+    }
+
+    function advanceChain() {
+      if (advancing) return;
+      advancing = true;
+      if (segs[current]) { segs[current].fill.style.width = "100%"; segs[current].seg.classList.add("done"); }
       if (current >= items.length - 1) { onComplete(); return; }
-      segs[current].fill.style.width = "100%";
-      segs[current].seg.classList.add("done");
       current++;
-      player.loadVideoById(items[current].id);
+      loadCurrent();
+    }
+
+    function markDone(upto) {
+      for (var i = 0; i < segs.length; i++) if (i < upto) { segs[i].fill.style.width = "100%"; segs[i].seg.classList.add("done"); }
     }
 
     function onComplete() {
-      completed = true;
       stopPolling();
       markDone(segs.length);
       el("npIndex").textContent = "✓ Done";
       el("npTitle").textContent = "Workout complete — nice work!";
+      el("npTitle").classList.remove("muted");
       el("timeLine").textContent = "0:00 left of " + fmtTime(totalPlanned);
       var ov = el("startOverlay");
       ov.classList.remove("hidden");
@@ -685,14 +1114,10 @@
     }
 
     function syncIndexFromPlaylist() {
-      // In playlist mode, YouTube tracks its own index
       if (!player || !player.getPlaylistIndex) return;
       var pi = player.getPlaylistIndex();
       if (typeof pi === "number" && pi >= 0 && pi !== current) {
-        // mark everything before pi as done
-        for (var i = 0; i < pi; i++) {
-          if (segs[i]) { segs[i].fill.style.width = "100%"; segs[i].seg.classList.add("done"); }
-        }
+        for (var i = 0; i < pi; i++) if (segs[i]) { segs[i].fill.style.width = "100%"; segs[i].seg.classList.add("done"); }
         current = pi;
       }
     }
@@ -701,81 +1126,58 @@
       var S = YT.PlayerState;
       if (e.data === S.PLAYING) {
         started = true;
+        advancing = false;
         el("startOverlay").classList.add("hidden");
         if (usePlaylist) syncIndexFromPlaylist();
         startPolling();
         updateProgress();
       } else if (e.data === S.ENDED) {
-        if (usePlaylist) {
-          // playlist auto-advances; ENDED only fires at the very end of the list
-          onComplete();
-        } else {
-          advanceManually();
-        }
-      } else if (e.data === S.CUED) {
-        // ready
+        if (usePlaylist) onComplete();   // playlist auto-advances; ENDED = end of list
+        else endTrigger();               // end of a clip (filters spurious same-video ENDED)
       }
     }
 
-    function onErr(e) {
-      // skip the offending video
-      var msg = "Video " + (current + 1) + " couldn't play — skipping.";
-      notice(el("playerNotice"), msg, "warn");
+    function onErr() {
+      notice(el("playerNotice"), "Video " + (current + 1) + " couldn't play — skipping.", "warn");
       setTimeout(function () { el("playerNotice").innerHTML = ""; }, 4000);
-      if (usePlaylist) {
-        if (player.nextVideo) player.nextVideo();
-        else advanceManually();
-      } else {
-        advanceManually();
-      }
+      if (usePlaylist && player.nextVideo) player.nextVideo();
+      else advanceChain();
     }
 
     function createPlayer(startFn) {
       player = new YT.Player("ytplayer", {
         width: "100%", height: "100%",
-        playerVars: {
-          playsinline: 1,
-          rel: 0,
-          modestbranding: 1,
-          origin: originParam()
-        },
-        events: {
-          onReady: function () { if (startFn) startFn(); },
-          onStateChange: onState,
-          onError: onErr
-        }
+        playerVars: { playsinline: 1, rel: 0, modestbranding: 1, origin: originParam() },
+        events: { onReady: function () { if (startFn) startFn(); }, onStateChange: onState, onError: onErr }
       });
     }
 
     function startWorkout() {
-      completed = false;
       current = 0;
-      segs.forEach(function (s) { s.fill.style.width = "0%"; s.seg.classList.remove("done"); });
+      advancing = false;
+      segs.forEach(function (sg) { sg.fill.style.width = "0%"; sg.seg.classList.remove("done"); });
       el("startOverlay").classList.add("hidden");
-      var ids = items.map(function (it) { return it.id; });
 
       var kickoff = function () {
         if (usePlaylist && player.loadPlaylist) {
-          player.loadPlaylist(ids);
+          player.loadPlaylist(items.map(function (it) { return it.id; }));
         } else {
           usePlaylist = false;
-          player.loadVideoById(ids[0]);
+          loadCurrent();
         }
       };
-
       if (!player) createPlayer(kickoff);
       else kickoff();
     }
 
-    // start button (user gesture unlocks iOS audio)
     el("startBtn").addEventListener("click", startWorkout);
     el("skipBtn").addEventListener("click", function () {
       if (!started) return;
       if (usePlaylist && player.nextVideo) {
-        if (current >= items.length - 1) { onComplete(); }
-        else { player.nextVideo(); }
+        if (current >= items.length - 1) onComplete();
+        else player.nextVideo();
       } else {
-        advanceManually();
+        advanceChain();
       }
     });
     el("restartBtn").addEventListener("click", startWorkout);
@@ -784,7 +1186,6 @@
       location.href = location.origin + location.pathname;
     });
 
-    // initialize first render
     updateProgress();
   }
 
@@ -795,6 +1196,8 @@
     var workout = parseWorkoutFromUrl();
     if (workout && workout.items.length) {
       initPlayer(workout);
+    } else if (new URLSearchParams(location.search).get("mode") === "clip") {
+      initClipBuilder();
     } else {
       initBuilder();
     }
